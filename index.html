@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="description" content="Smart Deal - The best affiliate products curated for you. Trending electronics, fashion, and more." />
+    <meta property="og:title" content="Smart Deal - Affiliate Store" />
+    <meta property="og:description" content="Discover trending products at the best prices." />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=2070&auto=format&fit=crop" />
+    <title>Smart Deal | Best Offers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              brand: {
+                50: '#f0f9ff',
+                100: '#e0f2fe',
+                500: '#0ea5e9',
+                600: '#0284c7',
+                900: '#0c4a6e',
+              }
+            },
+            keyframes: {
+              wind: {
+                '0%': { transform: 'translateX(-100%)', opacity: '0' },
+                '20%': { opacity: '1' },
+                '100%': { transform: 'translateX(400%)', opacity: '0' },
+              },
+              'limb-swing': {
+                '0%, 100%': { transform: 'rotate(-25deg)' },
+                '50%': { transform: 'rotate(25deg)' },
+              },
+              'limb-swing-opp': {
+                '0%, 100%': { transform: 'rotate(25deg)' },
+                '50%': { transform: 'rotate(-25deg)' },
+              },
+              'road-move': {
+                '0%': { transform: 'translateX(0)' },
+                '100%': { transform: 'translateX(-50%)' },
+              },
+              'bounce-run': {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-4px)' },
+              },
+              'fade-in-up': {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            },
+            animation: {
+              'wind-fast': 'wind 0.8s linear infinite',
+              'wind-medium': 'wind 1.2s linear infinite 0.3s',
+              'wind-slow': 'wind 1.5s linear infinite 0.6s',
+              // Slowed down animations below
+              'limb': 'limb-swing 1.2s ease-in-out infinite',
+              'limb-opp': 'limb-swing-opp 1.2s ease-in-out infinite',
+              'road': 'road-move 3s linear infinite',
+              'bounce-run': 'bounce-run 0.6s ease-in-out infinite',
+              'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      .no-scrollbar::-webkit-scrollbar {
+          display: none;
+      }
+      /* Hide scrollbar for IE, Edge and Firefox */
+      .no-scrollbar {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+      }
+      .origin-top-center {
+        transform-origin: top center;
+        transform-box: fill-box;
+      }
+      /* Mobile safe area spacing */
+      .safe-pb {
+        padding-bottom: env(safe-area-inset-bottom, 20px);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "url": "https://aistudiocdn.com/url@^0.11.4"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-gray-50 text-slate-900 antialiased">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
