@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetails } from './components/ProductDetails';
 import { AdminPanel } from './components/AdminPanel';
+import { TrendingBanner } from './components/TrendingBanner';
 import { Product, Category } from './types';
 import { getProducts, saveProduct, deleteProduct, updateProductInteraction } from './services/storageService';
 
@@ -139,9 +140,16 @@ const App: React.FC = () => {
             }}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            products={products}
           />
 
           <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
+            
+            {/* Show Trending Banner only on Trending tab and when not searching */}
+            {activeCategory === 'Trending' && !searchQuery && (
+              <TrendingBanner products={products} onProductClick={setSelectedProductId} />
+            )}
+
             <div className="flex items-center justify-between mb-4 px-2">
               <h2 className="text-lg font-bold text-gray-800">
                 {searchQuery ? `Results for "${searchQuery}"` : activeCategory}

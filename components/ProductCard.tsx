@@ -1,5 +1,5 @@
 
-import React, { useState, TouchEvent, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -10,73 +10,11 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onInteraction, onBuy }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isHovered, setIsHovered] = useState(false); // To pause on hover if needed
-  
+  const [isHovered, setIsHovered] = useState(false);
   const [likeState, setLikeState] = useState<'none' | 'liked' | 'disliked'>('none');
 
-  // Touch state for swipe
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  const images = product.images && product.images.length > 0 ? product.images : ['https://picsum.photos/400/400'];
-  const slideInterval = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Auto-slide effect
-  useEffect(() => {
-    if (images.length <= 1) return;
-
-    const startSlideTimer = () => {
-        stopSlideTimer(); // Clear existing
-        slideInterval.current = setInterval(() => {
-            setCurrentImageIndex((prev) => (prev + 1) % images.length);
-        }, 3000); // 3 seconds
-    };
-
-    const stopSlideTimer = () => {
-        if (slideInterval.current) {
-            clearInterval(slideInterval.current);
-            slideInterval.current = null;
-        }
-    };
-
-    // Start only if not touching
-    if (touchStart === null && !isHovered) {
-        startSlideTimer();
-    } else {
-        stopSlideTimer();
-    }
-
-    return () => stopSlideTimer();
-  }, [images.length, touchStart, isHovered]);
-  
-  const handleTouchStart = (e: TouchEvent) => {
-      setTouchEnd(null);
-      setTouchStart(e.targetTouches[0].clientX);
-  }
-
-  const handleTouchMove = (e: TouchEvent) => {
-      setTouchEnd(e.targetTouches[0].clientX);
-  }
-
-  const handleTouchEnd = (e: TouchEvent) => {
-      if (!touchStart || !touchEnd) {
-          setTouchStart(null); // Reset
-          return;
-      }
-      const distance = touchStart - touchEnd;
-      const isLeftSwipe = distance > 50;
-      const isRightSwipe = distance < -50;
-      
-      if (isLeftSwipe || isRightSwipe) {
-          e.stopPropagation();
-      }
-
-      if (isLeftSwipe) setCurrentImageIndex((prev) => (prev + 1) % images.length);
-      if (isRightSwipe) setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-      
-      setTouchStart(null); // Reset to resume auto-slide
-  }
+  // Always use the first image
+  const displayImage = product.images && product.images.length > 0 ? product.images[0] : 'https://picsum.photos/400/400';
 
   const formatCount = (count: number) => {
     if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
@@ -136,28 +74,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onIn
         className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 flex flex-col overflow-hidden relative select-none cursor-pointer"
     >
       
-      {/* Image Carousel */}
-      <div 
-        className="relative aspect-square block bg-white overflow-hidden p-2"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
+      {/* Static Image */}
+      <div className="relative aspect-square block bg-white overflow-hidden p-2">
         <img
-          src={images[currentImageIndex]}
+          src={displayImage}
           alt={product.name}
           className="w-full h-full object-contain transition-transform duration-500 hover:scale-105"
           draggable="false"
         />
-        
-        {/* Navigation Dots */}
-        {images.length > 1 && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10 pointer-events-none">
-                {images.map((_, idx) => (
-                    <div key={idx} className={`w-1.5 h-1.5 rounded-full shadow-sm transition-all duration-300 ${idx === currentImageIndex ? 'bg-brand-600 scale-125 ring-1 ring-white' : 'bg-gray-300'}`} />
-                ))}
-            </div>
-        )}
       </div>
 
       {/* Details & Interaction */}
@@ -226,7 +150,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onIn
                 onClick={handleBuyClick}
                 className="block mt-2 text-center w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded transition-colors active:scale-95 shadow-sm animate-pulse hover:animate-none"
                 >
-                Buy Now
+                Buy Only
                 </button>
             )}
         </div>

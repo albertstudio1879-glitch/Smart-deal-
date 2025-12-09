@@ -48,20 +48,6 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onBack,
     return () => stopSlideTimer();
   }, [images.length, touchStart]);
 
-  const getPlatformName = (prod: Product) => {
-    if (prod.platform) return prod.platform;
-
-    const lower = prod.affiliateLink.toLowerCase();
-    if (lower.includes('amazon')) return 'Amazon';
-    if (lower.includes('flipkart')) return 'Flipkart';
-    if (lower.includes('myntra')) return 'Myntra';
-    if (lower.includes('ajio')) return 'Ajio';
-    if (lower.includes('meesho')) return 'Meesho';
-    return 'Partner Store';
-  };
-
-  const platformName = getPlatformName(product);
-
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
   };
@@ -304,7 +290,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onBack,
              onClick={onBuy}
              className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-lg py-3.5 px-6 rounded-xl shadow-md text-center transition-all active:scale-95 animate-pulse hover:animate-none flex items-center justify-center gap-2"
            >
-             <span>Buy on {platformName}</span>
+             <span>Buy Only</span>
              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
            </button>
         </div>
