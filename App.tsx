@@ -4,7 +4,6 @@ import { Header } from './components/Header';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetails } from './components/ProductDetails';
 import { AdminPanel } from './components/AdminPanel';
-import { RedirectionOverlay } from './components/RedirectionOverlay';
 import { Product, Category } from './types';
 import { getProducts, saveProduct, deleteProduct, updateProductInteraction } from './services/storageService';
 
@@ -15,8 +14,6 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  
-  const [redirectProduct, setRedirectProduct] = useState<Product | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -110,7 +107,7 @@ const App: React.FC = () => {
   const selectedProduct = products.find(p => p.id === selectedProductId);
 
   const handleBuy = (product: Product) => {
-    setRedirectProduct(product);
+    window.open(product.affiliateLink, '_blank');
   };
 
   if (isLoading) {
@@ -125,13 +122,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       
-      {redirectProduct && (
-        <RedirectionOverlay 
-          product={redirectProduct} 
-          onClose={() => setRedirectProduct(null)} 
-        />
-      )}
-
       {selectedProduct ? (
         <ProductDetails 
           product={selectedProduct} 
