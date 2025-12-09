@@ -52,8 +52,8 @@ export const TrendingBanner: React.FC<TrendingBannerProps> = ({ products, onProd
                   {currentProduct.offer || 'Best Seller'}
                 </span>
              </div>
-             <button className="mt-4 bg-white text-orange-600 px-4 py-2 rounded-lg font-bold text-xs sm:text-sm self-start shadow-md hover:bg-orange-50 transition-colors">
-                Check Deal >
+             <button className="mt-4 bg-white text-orange-600 px-4 py-2 rounded-lg font-bold text-xs sm:text-sm self-start shadow-md hover:bg-orange-50 transition-colors flex items-center gap-1">
+                Check Deal <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
              </button>
           </div>
 
