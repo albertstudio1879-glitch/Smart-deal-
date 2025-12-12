@@ -69,6 +69,20 @@ const App: React.FC = () => {
     setProducts(data);
     setSiteSettings(getSiteSettings());
     setIsLoading(false);
+
+    // Deep Link Logic: Check URL for ?code=XYZ
+    const params = new URLSearchParams(window.location.search);
+    const codeParam = params.get('code');
+    if (codeParam && data.length > 0) {
+        // Find product by code (case-insensitive)
+        const foundProduct = data.find(p => p.code.toLowerCase() === codeParam.toLowerCase());
+        if (foundProduct) {
+            setSelectedProductId(foundProduct.id);
+            // Optional: Clean URL so reload doesn't get stuck on one product, 
+            // or keep it to allow sharing the URL directly from browser bar.
+            // keeping it for now is user friendly.
+        }
+    }
   };
 
   useEffect(() => {
@@ -264,7 +278,11 @@ const App: React.FC = () => {
           product={selectedProduct} 
           allProducts={products}
           onProductClick={setSelectedProductId}
-          onBack={() => setSelectedProductId(null)} 
+          onBack={() => {
+              setSelectedProductId(null);
+              // Clear URL params on back to avoid getting stuck if user refreshes
+              window.history.replaceState({}, '', window.location.pathname);
+          }} 
           onInteraction={handleInteraction}
           onBuy={() => handleBuy(selectedProduct)}
           onBuyItem={handleBuy}

@@ -1,7 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { Product } from '../types';
-import { X, Printer, Copy, MessageCircle, Facebook, Globe, Link, Download } from 'lucide-react';
+import { X, Copy, MessageCircle, Facebook, Globe, Link, Download, Share2 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { toPng } from 'html-to-image';
 
@@ -15,15 +15,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const websiteUrl = 'https://smart-deal-ebon.vercel.app/';
-  const productLink = product.affiliateLink;
+  const affiliateLink = product.affiliateLink;
+  
+  // Deep link pointing to the website with product code parameter
+  const deepLink = `${websiteUrl}?code=${product.code}`;
+  
   const shareText = `Check out ${product.name} on Smart Deal Online! Code: ${product.code}`;
   
-  // Construct QR Data with all details
-  const qrData = `Name: ${product.name}\nPrice: ${product.price}\nCode: ${product.code}\nLink: ${productLink}\nWebsite: ${websiteUrl}`;
-
-  const handlePrint = () => {
-    window.print();
-  };
+  // QR Code only contains the Website Deep Link now
+  const qrData = deepLink;
 
   const handleDownload = async () => {
     if (cardRef.current === null) {
@@ -39,31 +39,50 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
         link.click();
     } catch (err) {
         console.error('Failed to download image', err);
-        alert('Could not download image. Try printing instead.');
+        alert('Could not download image.');
     } finally {
         setIsDownloading(false);
     }
   };
 
+  const handleSystemShare = async () => {
+      if (navigator.share) {
+          try {
+              // We want to share the deep link
+              await navigator.share({
+                  title: 'Smart Deal Online',
+                  text: shareText,
+                  url: deepLink
+              });
+          } catch (err) {
+              console.log('Error sharing:', err);
+          }
+      } else {
+          alert("System sharing not supported on this device. Use Copy Link.");
+      }
+  };
+
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`${shareText}\nLink: ${productLink}`);
-    alert("Link and details copied to clipboard!");
+    // Copy the deep link (to the website), not the affiliate link
+    navigator.clipboard.writeText(`${shareText}\nLink: ${deepLink}`);
+    alert("Website link copied to clipboard!");
   };
 
   const shareToWhatsapp = () => {
-    const url = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + productLink)}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + deepLink)}`;
     window.open(url, '_blank');
   };
 
   const shareToFacebook = () => {
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(productLink)}`;
+    // Facebook shares the deep link URL
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(deepLink)}`;
     window.open(url, '_blank');
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
       
-      {/* Print Styles */}
+      {/* Print Styles: Hidden but kept structure if browser print is forced manually */}
       <style>{`
         @media print {
           body * {
@@ -122,7 +141,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
                 </div>
 
                 {/* Product Image - Fixed height for mobile compactness */}
-                <div className="h-40 w-full bg-white rounded-lg overflow-hidden border border-gray-100 p-1 mb-2 flex items-center justify-center">
+                <div className="h-44 w-full bg-white rounded-lg overflow-hidden border border-gray-100 p-1 mb-2 flex items-center justify-center">
                     <img 
                         src={product.images[0]} 
                         alt={product.name} 
@@ -150,17 +169,23 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
                     )}
                 </div>
 
-                {/* Footer: Split View (Links + QR) */}
+                {/* Footer: Website Link + QR */}
                 <div className="flex gap-2 items-center bg-blue-50/50 p-2 rounded-lg border border-blue-100 text-left">
-                     <div className="flex-1 min-w-0 space-y-1.5">
+                     <div className="flex-1 min-w-0 space-y-1">
                         <div>
-                            <p className="text-[8px] font-bold text-gray-500 uppercase tracking-wide">Product Link</p>
-                            <p className="text-[9px] text-blue-600 truncate leading-none font-medium">{productLink}</p>
+                            <p className="text-[8px] font-bold text-gray-500 uppercase tracking-wide">Website</p>
+                            <a 
+                                href={deepLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-blue-600 truncate leading-tight font-bold underline block"
+                            >
+                                {websiteUrl.replace(/^https?:\/\//, '')}
+                            </a>
                         </div>
-                        <div>
-                            <p className="text-[8px] font-bold text-gray-500 uppercase tracking-wide">Scan to Buy</p>
-                            <p className="text-[8px] text-gray-400 leading-none">Use camera to scan QR</p>
-                        </div>
+                        <p className="text-[8px] text-gray-400 leading-none pt-1">
+                            Scan to find this product instantly on our app.
+                        </p>
                      </div>
                      <div className="bg-white p-1 rounded border border-gray-100 flex-shrink-0">
                         <QRCode 
@@ -178,15 +203,19 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
         {/* Action Buttons */}
         <div id="action-buttons" className="p-3 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 space-y-2 z-10">
             <div className="grid grid-cols-4 gap-2">
-                <button onClick={shareToWhatsapp} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-green-50 text-green-600 transition-colors">
+                <button onClick={shareToWhatsapp} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors">
                     <MessageCircle className="w-5 h-5" />
                     <span className="text-[9px] font-medium">WhatsApp</span>
                 </button>
-                <button onClick={handleCopyLink} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
-                    <Copy className="w-5 h-5" />
-                    <span className="text-[9px] font-medium">Copy</span>
+                <button onClick={shareToFacebook} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors">
+                    <Facebook className="w-5 h-5" />
+                    <span className="text-[9px] font-medium">Facebook</span>
                 </button>
-                <button onClick={handleDownload} disabled={isDownloading} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-purple-50 text-purple-600 transition-colors">
+                <button onClick={handleSystemShare} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors">
+                    <Share2 className="w-5 h-5" />
+                    <span className="text-[9px] font-medium">Share</span>
+                </button>
+                <button onClick={handleDownload} disabled={isDownloading} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 transition-colors">
                     {isDownloading ? (
                         <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
                     ) : (
@@ -194,14 +223,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
                     )}
                     <span className="text-[9px] font-medium">Download</span>
                 </button>
-                <button onClick={handlePrint} className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100 text-gray-900 transition-colors">
-                    <Printer className="w-5 h-5" />
-                    <span className="text-[9px] font-medium">Print</span>
-                </button>
             </div>
             
             <a 
-                href={productLink} 
+                href={affiliateLink} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="block w-full bg-brand-600 hover:bg-brand-700 text-white font-bold text-center py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
