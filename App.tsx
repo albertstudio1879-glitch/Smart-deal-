@@ -5,21 +5,67 @@ import { ProductCard } from './components/ProductCard';
 import { ProductDetails } from './components/ProductDetails';
 import { AdminPanel } from './components/AdminPanel';
 import { TrendingBanner } from './components/TrendingBanner';
-import { Product, Category } from './types';
-import { getProducts, saveProduct, deleteProduct, updateProductInteraction } from './services/storageService';
+import { BestOfferBanner } from './components/BestOfferBanner';
+import { Footer } from './components/Footer';
+import { InfoPage } from './components/InfoPage';
+import { FilterBar } from './components/FilterBar';
+import { Product, Category, Theme } from './types';
+import { getProducts, saveProduct, deleteProduct, updateProductInteraction, getSiteSettings, SiteSettings } from './services/storageService';
+import { Language, getTranslation } from './utils/translations';
 
 const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<Category>('Trending');
+  const [activeCategory, setActiveCategory] = useState<Category>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [currentLang, setCurrentLang] = useState<Language>('en');
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({});
+  
+  // Filtering & Sorting State
+  const [activePriceRange, setActivePriceRange] = useState<string | null>(null);
+  const [activeMinOffer, setActiveMinOffer] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<'default' | 'discount' | 'likes'>('default');
+
+  // Info Page & Navigation State
+  const [activeInfoPage, setActiveInfoPage] = useState<{title: string, content: string} | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [returnToSidebar, setReturnToSidebar] = useState(false);
+
+  // Theme State
+  const [theme, setTheme] = useState<Theme>(() => {
+    return (localStorage.getItem('theme') as Theme) || 'system';
+  });
+
+  // Apply Theme Effect
+  useEffect(() => {
+    const root = window.document.documentElement;
+    
+    const applyTheme = (t: Theme) => {
+        if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+    };
+
+    applyTheme(theme);
+    localStorage.setItem('theme', theme);
+
+    if (theme === 'system') {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleChange = () => applyTheme('system');
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  }, [theme]);
 
   const loadData = async () => {
     setIsLoading(true);
     const data = await getProducts();
     setProducts(data);
+    setSiteSettings(getSiteSettings());
     setIsLoading(false);
   };
 
@@ -80,8 +126,22 @@ const App: React.FC = () => {
     });
   };
 
+  const cleanPrice = (val: string | undefined): number => {
+      if (!val) return 0;
+      return parseFloat(val.toString().replace(/[^0-9.]/g, '')) || 0;
+  };
+
+  const getDiscount = (p: Product): number => {
+       const mrp = cleanPrice(p.mrp);
+       const price = cleanPrice(p.price);
+       if (!mrp || !price || mrp <= price) return 0;
+       return ((mrp - price) / mrp) * 100;
+  };
+
   const filteredProducts = useMemo(() => {
     let filtered = products;
+
+    // 1. Search Query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(p => 
@@ -89,46 +149,124 @@ const App: React.FC = () => {
         p.code.toLowerCase().includes(query)
       );
     } else {
-      if (activeCategory === 'Trending') {
+      // 2. Category Filter
+      if (activeCategory === 'All') {
+        filtered = products;
+      } else if (activeCategory === 'Offer Zone') {
+         filtered = filtered
+            .filter(p => getDiscount(p) > 55)
+            .sort((a, b) => getDiscount(b) - getDiscount(a));
+      } else if (activeCategory === 'Trending') {
         const taggedTrending = filtered.filter(p => p.categories && p.categories.includes('Trending'));
-        if (taggedTrending.length > 0) {
-          filtered = taggedTrending;
-        } else {
-          filtered = filtered.slice(0, 10);
-        }
+        filtered = taggedTrending.length > 0 ? taggedTrending : filtered.slice(0, 10);
       } else if (activeCategory === 'Recently Uploaded') {
         filtered = [...filtered].sort((a, b) => b.timestamp - a.timestamp);
       } else {
-        filtered = filtered.filter(p => p.categories && p.categories.includes(activeCategory));
+        filtered = filtered.filter(p => {
+          const cats = p.categories || [];
+          if (activeCategory === 'Mobile') {
+             return cats.includes('Mobile') || (cats as string[]).includes('Mobiles');
+          }
+          if (activeCategory === 'Home & Appliances') {
+             return cats.includes('Home & Appliances') || cats.includes('Home') || cats.includes('Appliances');
+          }
+          return cats.includes(activeCategory);
+        });
       }
     }
+
+    // 3. Price Range Filter
+    if (activePriceRange) {
+        filtered = filtered.filter(p => {
+            const price = cleanPrice(p.price);
+            if (activePriceRange === '100000+') return price >= 100000;
+            
+            const [min, max] = activePriceRange.split('-').map(Number);
+            return price >= min && price <= max;
+        });
+    }
+
+    // 4. Min Offer Filter
+    if (activeMinOffer) {
+        filtered = filtered.filter(p => getDiscount(p) >= activeMinOffer);
+    }
+
+    // 5. Sorting
+    if (sortBy === 'likes') {
+        filtered = [...filtered].sort((a, b) => b.likes - a.likes);
+    } else if (sortBy === 'discount') {
+        filtered = [...filtered].sort((a, b) => getDiscount(b) - getDiscount(a));
+    }
+    
     return filtered;
-  }, [products, activeCategory, searchQuery]);
+  }, [products, activeCategory, searchQuery, activePriceRange, activeMinOffer, sortBy]);
 
   const selectedProduct = products.find(p => p.id === selectedProductId);
 
   const handleBuy = (product: Product) => {
-    window.open(product.affiliateLink, '_blank');
+    if (product.affiliateLink) {
+        window.open(product.affiliateLink, '_blank');
+    }
   };
+
+  const t = (key: string) => getTranslation(currentLang, key);
+
+  const handleOpenInfoPage = (pageKey: 'help' | 'about' | 'legal', fromSidebar: boolean = false) => {
+      const title = getTranslation(currentLang, `${pageKey}Title`);
+      const content = getTranslation(currentLang, `${pageKey}Content`);
+      setActiveInfoPage({ title, content });
+      setReturnToSidebar(fromSidebar);
+      setIsSidebarOpen(false); 
+  };
+
+  const handleInfoPageBack = () => {
+    setActiveInfoPage(null);
+    if (returnToSidebar) setIsSidebarOpen(true);
+    setReturnToSidebar(false);
+  };
+
+  const getCategoryTitle = () => {
+    if (searchQuery) return `${t('resultsFor')} "${searchQuery}"`;
+    if (activeCategory === 'All') return ''; 
+    if (activeCategory === 'Offer Zone') return t('offerZone');
+    
+    const catKey = activeCategory.toLowerCase().replace(/ /g, '').replace('&', '').replace('acc', 'acc') as any;
+    return t(catKey) !== catKey ? t(catKey) : activeCategory;
+  };
+
+  // Determine if we should show the Best Offer Banner interspersed in the grid
+  const showBestOffersBanner = activeCategory === 'All' && !searchQuery && !activePriceRange && !activeMinOffer && sortBy === 'default';
+  const productsBeforeBanner = showBestOffersBanner ? filteredProducts.slice(0, 4) : filteredProducts;
+  const productsAfterBanner = showBestOffersBanner ? filteredProducts.slice(4) : [];
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center flex-col">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center flex-col transition-colors duration-300">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mb-4"></div>
-        <p className="text-gray-500 text-sm">Loading Store...</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">{t('loading')}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 font-sans transition-colors duration-300">
       
-      {selectedProduct ? (
+      {activeInfoPage ? (
+          <InfoPage 
+            title={activeInfoPage.title}
+            content={activeInfoPage.content}
+            onBack={handleInfoPageBack}
+          />
+      ) : selectedProduct ? (
         <ProductDetails 
           product={selectedProduct} 
+          allProducts={products}
+          onProductClick={setSelectedProductId}
           onBack={() => setSelectedProductId(null)} 
           onInteraction={handleInteraction}
           onBuy={() => handleBuy(selectedProduct)}
+          onBuyItem={handleBuy}
+          lang={currentLang}
         />
       ) : (
         <>
@@ -137,68 +275,103 @@ const App: React.FC = () => {
             onCategoryChange={(cat) => {
               setActiveCategory(cat);
               setSearchQuery('');
+              // Reset filters when changing categories
+              setActivePriceRange(null);
+              setActiveMinOffer(null);
+              setSortBy('default');
             }}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             products={products}
+            currentLang={currentLang}
+            onLanguageChange={setCurrentLang}
+            siteSettings={siteSettings}
+            onAdminClick={() => setIsAdminOpen(true)}
+            currentTheme={theme}
+            onThemeChange={setTheme}
+            onOpenInfoPage={handleOpenInfoPage}
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
           />
 
           <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
             
-            {/* Show Trending Banner only on Trending tab and when not searching */}
-            {activeCategory === 'Trending' && !searchQuery && (
+            {/* Show Trending Banner only on Home (All) tab and when not searching */}
+            {activeCategory === 'All' && !searchQuery && !activePriceRange && !activeMinOffer && sortBy === 'default' && (
               <TrendingBanner products={products} onProductClick={setSelectedProductId} />
             )}
 
-            <div className="flex items-center justify-between mb-4 px-2">
-              <h2 className="text-lg font-bold text-gray-800">
-                {searchQuery ? `Results for "${searchQuery}"` : activeCategory}
-              </h2>
-              <span className="text-xs text-gray-500">
-                {filteredProducts.length} Product{filteredProducts.length !== 1 ? 's' : ''}
-              </span>
+            <div className="flex items-center justify-between mb-2 px-2">
+              {getCategoryTitle() && (
+                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+                    {getCategoryTitle()}
+                </h2>
+              )}
             </div>
+            
+            {/* Comprehensive Filter Bar */}
+            <FilterBar 
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              activePriceRange={activePriceRange}
+              onPriceRangeChange={setActivePriceRange}
+              activeMinOffer={activeMinOffer}
+              onMinOfferChange={setActiveMinOffer}
+              resultCount={filteredProducts.length}
+            />
 
             {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
-                {filteredProducts.map(product => (
-                  <ProductCard 
-                    key={product.id} 
-                    product={product} 
-                    onClick={() => setSelectedProductId(product.id)}
-                    onInteraction={handleInteraction}
-                    onBuy={() => handleBuy(product)}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 mt-2">
+                  {productsBeforeBanner.map(product => (
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      onClick={() => setSelectedProductId(product.id)}
+                      onInteraction={handleInteraction}
+                      onBuy={() => handleBuy(product)}
+                      lang={currentLang}
+                    />
+                  ))}
+                </div>
+
+                {/* Interstitial Best Offer Banner */}
+                {showBestOffersBanner && (
+                   <div className="mt-6">
+                      <BestOfferBanner products={products} onProductClick={setSelectedProductId} />
+                   </div>
+                )}
+
+                {productsAfterBanner.length > 0 && (
+                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 mt-2 sm:mt-4">
+                      {productsAfterBanner.map(product => (
+                        <ProductCard 
+                          key={product.id} 
+                          product={product} 
+                          onClick={() => setSelectedProductId(product.id)}
+                          onInteraction={handleInteraction}
+                          onBuy={() => handleBuy(product)}
+                          lang={currentLang}
+                        />
+                      ))}
+                   </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-20">
                 <div className="text-6xl mb-4">🔍</div>
-                <h3 className="text-xl font-medium text-gray-900">No products found</h3>
-                <p className="text-gray-500 mt-2">Try adjusting your search or category.</p>
+                <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100">{t('noProducts')}</h3>
+                <p className="text-gray-500 dark:text-gray-400 mt-2">{t('tryAdjusting')}</p>
               </div>
             )}
           </main>
 
-          <footer className="bg-white border-t border-gray-200 mt-12 py-8">
-            <div className="max-w-7xl mx-auto px-4 text-center">
-              <p className="text-gray-400 text-sm">
-                © {new Date().getFullYear()} Smart Deal Affiliate Store. All rights reserved.
-              </p>
-              <div className="flex justify-center items-center gap-4 mt-2">
-                <p className="text-gray-400 text-xs">
-                  Disclaimer: We earn a commission for products purchased through some links in this site.
-                </p>
-                <button 
-                  onClick={() => setIsAdminOpen(true)}
-                  className="text-gray-300 hover:text-gray-500 transition-colors"
-                  title="Admin Login"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                </button>
-              </div>
-            </div>
-          </footer>
+          <Footer 
+            settings={siteSettings} 
+            onAdminClick={() => setIsAdminOpen(true)} 
+            lang={currentLang} 
+            onOpenInfoPage={handleOpenInfoPage}
+          />
         </>
       )}
 

@@ -1,25 +1,85 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Category, CATEGORIES, Product } from '../types';
+import { Category, CATEGORIES, Product, Theme, CATEGORY_DETAILS } from '../types';
+import { LANGUAGES, Language, getTranslation } from '../utils/translations';
+import { SiteSettings } from '../services/storageService';
+import { 
+  Menu, Search, LayoutGrid, Languages, Percent, 
+  HelpCircle, Scale, Info, ArrowLeft, ChevronRight, 
+  Youtube, Facebook, MessageCircle, Send, Instagram, Twitter,
+  Zap, Star, Clock, Coffee, Smartphone, Shirt, Sparkles, Package, X,
+  Moon, Sun, Monitor, TrendingUp
+} from 'lucide-react';
 
 interface HeaderProps {
   activeCategory: Category;
   onCategoryChange: (cat: Category) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  products: Product[]; // Passed down to handle search suggestions
+  products: Product[];
+  currentLang: Language;
+  onLanguageChange: (lang: Language) => void;
+  siteSettings?: SiteSettings;
+  onAdminClick?: () => void;
+  currentTheme: Theme;
+  onThemeChange: (theme: Theme) => void;
+  onOpenInfoPage: (page: 'help' | 'about' | 'legal', fromSidebar: boolean) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (isOpen: boolean) => void;
 }
+
+const SidebarItem: React.FC<{ 
+  icon?: any; 
+  label: string; 
+  onClick?: () => void; 
+  subText?: string; 
+  active?: boolean;
+  rightIcon?: React.ReactNode;
+}> = ({ icon: Icon, label, onClick, subText, active, rightIcon }) => (
+  <button 
+    onClick={onClick} 
+    className={`w-full flex items-center gap-4 px-4 py-3.5 transition-colors border-l-4 ${active ? 'bg-brand-50 border-brand-600 text-brand-700 dark:bg-brand-900/20 dark:text-brand-400' : 'border-transparent hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300'}`}
+  >
+     {Icon ? (
+        <Icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-brand-600 dark:text-brand-400' : 'text-gray-400 dark:text-gray-500'}`} />
+     ) : (
+        <div className={`w-2 h-2 rounded-full ${active ? 'bg-brand-600' : 'bg-gray-300 dark:bg-slate-600'}`}></div>
+     )}
+     
+     <div className="flex-1 text-left flex items-center justify-between">
+        <span className={`text-sm ${active ? 'font-bold' : 'font-medium'}`}>{label}</span>
+        <div className="flex items-center gap-2">
+            {subText && <span className="text-xs text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full font-bold">{subText}</span>}
+            {rightIcon}
+        </div>
+     </div>
+  </button>
+);
 
 export const Header: React.FC<HeaderProps> = ({
   activeCategory,
   onCategoryChange,
   searchQuery,
   onSearchChange,
-  products = [] // Default to empty if not ready
+  products = [],
+  currentLang,
+  onLanguageChange,
+  siteSettings = {} as SiteSettings,
+  onAdminClick,
+  currentTheme,
+  onThemeChange,
+  onOpenInfoPage,
+  isSidebarOpen,
+  setIsSidebarOpen
 }) => {
   const [suggestions, setSuggestions] = useState<{product: Product, matchType: string}[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+  const [isAllCategoriesMenuOpen, setIsAllCategoriesMenuOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  const t = (key: string) => getTranslation(currentLang, key);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({
             return;
         }
         
-        // Category match roughly (if searching for 'shoes' and category has 'fashion')
+        // Category match roughly
         const catMatch = p.categories.some(c => c.toLowerCase().includes(query));
         if (catMatch) {
              matches.push({ product: p, matchType: 'category' });
@@ -66,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
         }
     });
 
-    setSuggestions(matches.slice(0, 6)); // Limit to 6 suggestions
+    setSuggestions(matches.slice(0, 6));
   }, [searchQuery, products]);
 
   const handleSuggestionClick = (name: string) => {
@@ -74,99 +134,363 @@ export const Header: React.FC<HeaderProps> = ({
     setShowSuggestions(false);
   };
 
+  const handleCategoryClick = (cat: Category) => {
+    onCategoryChange(cat);
+    setIsSidebarOpen(false);
+  };
+
+  const getTranslatedCategory = (cat: string) => {
+      // Normalize 'For Gen Z' to 'forgenz' for translation key
+      const catKey = cat.toLowerCase().replace(/ /g, '').replace('&', '').replace('acc', 'acc') as any;
+      return t(catKey);
+  };
+
+  const resetMenus = () => {
+      setIsLanguageMenuOpen(false);
+      setIsThemeMenuOpen(false);
+      setIsAllCategoriesMenuOpen(false);
+  };
+
+  // Define Main Categories that stay on the main menu
+  const MAIN_CATEGORY_IDS = ['Trending', 'Offer Zone', 'Recently Uploaded'];
+
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-sm transition-all">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        
-        {/* Top Row: Brand, Search */}
-        <div className="flex flex-col md:flex-row md:items-center py-3 md:py-4 gap-3 md:gap-8">
+    <>
+      <header className="sticky top-0 z-50 w-full bg-white dark:bg-slate-900 shadow-sm transition-all duration-300">
+        <div className="max-w-7xl mx-auto">
           
-          <div className="flex items-center justify-between">
-            {/* Brand */}
-            <div className="flex-shrink-0 cursor-pointer group" onClick={() => onCategoryChange('Trending')}>
-              <span className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-500 animate-in fade-in">
-                Smart Deal
-              </span>
-            </div>
-          </div>
-
-          {/* Search Area */}
-          <div className="flex-1 relative group z-20" ref={searchContainerRef}>
-            <div className="relative w-full transition-all duration-300 transform">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400 group-focus-within:text-brand-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  className="block w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-full leading-5 bg-gray-100 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-500 shadow-sm hover:bg-white hover:shadow-md focus:shadow-lg sm:text-sm"
-                  placeholder="Product name or product code"
-                  value={searchQuery}
-                  onChange={(e) => {
-                      onSearchChange(e.target.value);
-                      setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                />
-            </div>
-
-            {/* Suggestions Dropdown */}
-            {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                    <ul>
-                        {suggestions.map((item) => (
-                            <li 
-                              key={item.product.id}
-                              onClick={() => handleSuggestionClick(item.product.name)}
-                              className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-none flex items-center justify-between group"
-                            >
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                   {/* Small thumbnail */}
-                                   <div className="w-8 h-8 rounded bg-gray-100 flex-shrink-0 overflow-hidden">
-                                      <img src={item.product.images[0]} alt="" className="w-full h-full object-cover" />
-                                   </div>
-                                   <div className="flex flex-col min-w-0">
-                                       <span className="text-sm font-medium text-gray-800 truncate" dangerouslySetInnerHTML={{
-                                           __html: item.product.name.replace(new RegExp(searchQuery, 'gi'), (match) => `<b>${match}</b>`)
-                                       }}></span>
-                                       
-                                       <span className="text-xs text-brand-600 truncate">
-                                          {item.matchType === 'category' ? `in ${item.product.categories[0]}` : (item.product.categories[0] || 'Product')}
-                                       </span>
-                                   </div>
-                                </div>
-                                <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transform -rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* Bottom Row: Menu Tabs (Categories) */}
-        <div className="flex overflow-x-auto no-scrollbar pb-1 md:pb-0 border-t border-gray-100 md:border-none pt-2 md:pt-0">
-           <div className="flex space-x-6 md:space-x-8 min-w-full px-1 md:px-0">
-            {CATEGORIES.map((category) => (
-              <button
-                key={category}
-                onClick={() => onCategoryChange(category)}
-                className={`
-                  whitespace-nowrap pb-2.5 text-xs sm:text-sm font-semibold transition-all duration-200 border-b-2
-                  ${activeCategory === category
-                    ? 'border-brand-600 text-brand-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'}
-                `}
+          {/* Top Row: Menu, Brand, Search */}
+          <div className="flex flex-col md:flex-row md:items-center py-2 px-3 sm:px-4 gap-3 md:gap-8 border-b border-gray-100 dark:border-slate-800">
+            
+            <div className="flex items-center gap-3 justify-between">
+              
+              {/* Hamburger Menu - Top Left */}
+              <button 
+                onClick={() => { setIsSidebarOpen(true); resetMenus(); }}
+                className="p-2 -ml-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
               >
-                {category}
+                 <Menu className="w-6 h-6" />
               </button>
-            ))}
-           </div>
-        </div>
 
-      </div>
-    </header>
+              {/* Brand Name (Text only, DP removed) */}
+              <div className="flex-shrink-0 cursor-pointer group" onClick={() => onCategoryChange('All')}>
+                <span className="text-xl md:text-2xl font-black tracking-tight text-brand-600 dark:text-brand-500 whitespace-nowrap">
+                    Smart Deal Online
+                </span>
+              </div>
+            </div>
+
+            {/* Search Area */}
+            <div className="flex-1 relative group z-20" ref={searchContainerRef}>
+              <div className="relative w-full transition-all duration-300 transform">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-gray-400 group-focus-within:text-brand-500 transition-colors" />
+                  </div>
+                  <input
+                    type="text"
+                    className="block w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg leading-5 bg-gray-50 dark:bg-slate-800 placeholder-gray-400 dark:placeholder-gray-500 dark:text-gray-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-300 sm:text-sm"
+                    placeholder={t('searchPlaceholder')}
+                    value={searchQuery}
+                    onChange={(e) => {
+                        onSearchChange(e.target.value);
+                        setShowSuggestions(true);
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                  />
+              </div>
+
+              {/* Suggestions Dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                      <ul>
+                          {suggestions.map((item) => (
+                              <li 
+                                key={item.product.id}
+                                onClick={() => handleSuggestionClick(item.product.name)}
+                                className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-50 dark:border-slate-700 last:border-none flex items-center justify-between group"
+                              >
+                                  <div className="flex items-center gap-3 overflow-hidden">
+                                    {/* Small thumbnail */}
+                                    <div className="w-8 h-8 rounded bg-gray-100 dark:bg-slate-700 flex-shrink-0 overflow-hidden">
+                                        <img src={item.product.images[0]} alt="" className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate" dangerouslySetInnerHTML={{
+                                            __html: item.product.name.replace(new RegExp(searchQuery, 'gi'), (match) => `<b>${match}</b>`)
+                                        }}></span>
+                                        
+                                        <span className="text-xs text-brand-600 dark:text-brand-400 truncate">
+                                            {item.matchType === 'category' ? `in ${item.product.categories[0]}` : (item.product.categories[0] || 'Product')}
+                                        </span>
+                                    </div>
+                                  </div>
+                                  <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500" />
+                              </li>
+                          ))}
+                      </ul>
+                  </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* Bottom Row: Text Pills Categories (Professional Layout) */}
+          <div className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex overflow-x-auto no-scrollbar py-3 px-3 space-x-2 md:space-x-3 items-center min-w-full">
+              {CATEGORY_DETAILS.map((cat) => {
+                 const isActive = activeCategory === cat.id;
+                 
+                 return (
+                  <button
+                    key={cat.id}
+                    onClick={() => onCategoryChange(cat.id)}
+                    className={`px-4 py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap border ${
+                        isActive 
+                        ? 'bg-brand-600 border-brand-600 text-white shadow-md' 
+                        : 'bg-gray-50 dark:bg-slate-800 border-gray-100 dark:border-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                        {getTranslatedCategory(cat.id)}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+        </div>
+      </header>
+
+      {/* Sidebar Drawer */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-[100] flex">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setIsSidebarOpen(false)}
+          ></div>
+
+          {/* Sidebar Content */}
+          <div className="relative w-[85%] max-w-sm bg-white dark:bg-slate-900 h-full shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col transition-colors duration-300">
+             
+             {/* Header */}
+             <div 
+               className="border-b border-white/10 p-4 flex items-center justify-between sticky top-0 z-10"
+               style={{ backgroundColor: '#C2185B' }} // Updated to pink/crimson as requested
+             >
+                <div className="flex items-center gap-3">
+                   <div className="flex flex-col text-white justify-center">
+                        <span className="text-lg font-bold leading-tight">Smart Deal Online</span>
+                   </div>
+                </div>
+                <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/20 rounded-full text-white transition-colors">
+                    <X className="w-5 h-5" />
+                </button>
+             </div>
+
+             {/* Content Area */}
+             <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-900 py-2">
+                
+                {isLanguageMenuOpen ? (
+                    // Language Selection View
+                    <div className="animate-in slide-in-from-right duration-200">
+                        <div className="p-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2 sticky top-0">
+                            <button onClick={() => setIsLanguageMenuOpen(false)} className="p-1 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full">
+                                <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                            </button>
+                            <span className="font-bold text-gray-800 dark:text-gray-100">{t('chooseLanguage')}</span>
+                        </div>
+                        <div className="p-2">
+                            {LANGUAGES.map(lang => (
+                                <button
+                                key={lang.code}
+                                onClick={() => {
+                                    onLanguageChange(lang.code);
+                                    setIsLanguageMenuOpen(false);
+                                    setIsSidebarOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-4 rounded-xl flex items-center justify-between transition-colors border-b border-gray-50 dark:border-slate-800 last:border-0 ${currentLang === lang.code ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-bold' : 'hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300'}`}
+                                >
+                                <span className="text-base">{lang.name}</span>
+                                <span className="text-sm opacity-60 font-sans bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">{lang.localName}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ) : isThemeMenuOpen ? (
+                    // Theme Selection View
+                    <div className="animate-in slide-in-from-right duration-200">
+                        <div className="p-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2 sticky top-0">
+                            <button onClick={() => setIsThemeMenuOpen(false)} className="p-1 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full">
+                                <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                            </button>
+                            <span className="font-bold text-gray-800 dark:text-gray-100">{t('appearance')}</span>
+                        </div>
+                        <div className="p-2 space-y-1">
+                            {[
+                                { id: 'light', label: t('light'), icon: Sun },
+                                { id: 'dark', label: t('dark'), icon: Moon },
+                                { id: 'system', label: t('systemDefault'), icon: Monitor }
+                            ].map((option) => (
+                                <button
+                                    key={option.id}
+                                    onClick={() => {
+                                        onThemeChange(option.id as any);
+                                        // Optional: close menu after selection or keep open
+                                    }}
+                                    className={`w-full text-left px-4 py-4 rounded-xl flex items-center gap-4 transition-colors ${currentTheme === option.id ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-bold' : 'hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300'}`}
+                                >
+                                    <option.icon className={`w-5 h-5 ${currentTheme === option.id ? 'text-brand-600 dark:text-brand-400' : 'text-gray-400'}`} />
+                                    <span className="text-base">{option.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ) : isAllCategoriesMenuOpen ? (
+                     // All Categories Submenu
+                     <div className="animate-in slide-in-from-right duration-200">
+                        <div className="p-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2 sticky top-0">
+                            <button onClick={() => setIsAllCategoriesMenuOpen(false)} className="p-1 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full">
+                                <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                            </button>
+                            <span className="font-bold text-gray-800 dark:text-gray-100">{t('allCategories')}</span>
+                        </div>
+                        <div className="p-2">
+                             {/* Render only NON-MAIN categories here */}
+                             {CATEGORY_DETAILS.filter(cat => !MAIN_CATEGORY_IDS.includes(cat.id)).map(cat => (
+                                    <SidebarItem 
+                                        key={cat.id}
+                                        label={getTranslatedCategory(cat.id)}
+                                        active={activeCategory === cat.id}
+                                        onClick={() => handleCategoryClick(cat.id)} 
+                                    />
+                             ))}
+                        </div>
+                     </div>
+                ) : (
+                    // Main Menu View
+                    <div>
+                        {/* Primary Actions */}
+                        <div className="mb-2">
+                            <SidebarItem icon={Languages} label={t('chooseLanguage')} onClick={() => setIsLanguageMenuOpen(true)} />
+                            <SidebarItem icon={Moon} label={t('appearance')} onClick={() => setIsThemeMenuOpen(true)} subText={t(currentTheme === 'system' ? 'systemDefault' : currentTheme)} />
+                        </div>
+
+                        <div className="h-1 bg-gray-50 dark:bg-slate-800 mx-4 rounded mb-2"></div>
+
+                        {/* Highlighted Main Categories */}
+                        <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('trending')} & {t('offerZone')}</div>
+                        
+                        <div className="mb-2">
+                            <SidebarItem 
+                                icon={TrendingUp} 
+                                label={t('trending')} 
+                                active={activeCategory === 'Trending'} 
+                                onClick={() => handleCategoryClick('Trending')} 
+                            />
+                             <SidebarItem 
+                                icon={Percent} 
+                                label={t('offerZone')} 
+                                active={activeCategory === 'Offer Zone'} 
+                                onClick={() => handleCategoryClick('Offer Zone')} 
+                            />
+                            <SidebarItem 
+                                icon={Sparkles} 
+                                label={t('recentlyuploaded')} 
+                                active={activeCategory === 'Recently Uploaded'} 
+                                onClick={() => handleCategoryClick('Recently Uploaded')} 
+                            />
+                            
+                            {/* All Categories Trigger */}
+                            <SidebarItem 
+                                icon={LayoutGrid} 
+                                label={t('allCategories')} 
+                                onClick={() => setIsAllCategoriesMenuOpen(true)}
+                                rightIcon={<ChevronRight className="w-4 h-4 text-gray-400" />}
+                            />
+                        </div>
+
+                        <div className="h-1 bg-gray-50 dark:bg-slate-800 mx-4 rounded mb-2"></div>
+                        
+                        {/* Support & Legal */}
+                        <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('support')}</div>
+                        <SidebarItem icon={HelpCircle} label={t('helpCentre')} onClick={() => { onOpenInfoPage('help', true); setIsSidebarOpen(false); }} />
+                        <SidebarItem icon={Info} label={t('aboutUs')} onClick={() => { onOpenInfoPage('about', true); setIsSidebarOpen(false); }} />
+                        <SidebarItem icon={Scale} label={t('legal')} onClick={() => { onOpenInfoPage('legal', true); setIsSidebarOpen(false); }} />
+
+                        <div className="h-1 bg-gray-50 dark:bg-slate-800 mx-4 rounded my-2"></div>
+
+                        {/* Social Connect */}
+                         <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('connectWithUs')}</div>
+                         <div className="px-4 py-2 flex flex-wrap gap-3 mb-6">
+                             {/* YouTube - Black Circle, White Icon */}
+                             <a 
+                               href="https://youtube.com/@smartdeal-online.products?si=DEQhBYCRqwK2apM6" 
+                               target="_blank" 
+                               rel="noopener noreferrer" 
+                               className="w-10 h-10 rounded-full shadow-md flex items-center justify-center hover:scale-110 transition-transform bg-white dark:bg-transparent dark:shadow-none overflow-hidden border-2 border-transparent dark:border-white/20"
+                             >
+                                <img 
+                                    src="https://cdn-icons-png.flaticon.com/512/2504/2504965.png" 
+                                    alt="YouTube" 
+                                    className="w-full h-full object-cover rounded-full" 
+                                />
+                             </a>
+
+                             {/* Facebook - Black Circle, White Icon */}
+                             <a 
+                               href="https://www.facebook.com/share/1L7etvDEGm/" 
+                               target="_blank" 
+                               rel="noopener noreferrer" 
+                               className="w-10 h-10 rounded-full shadow-md flex items-center justify-center hover:scale-110 transition-transform bg-white dark:bg-transparent dark:shadow-none overflow-hidden border-2 border-transparent dark:border-white/20"
+                             >
+                                <img 
+                                    src="https://cdn-icons-png.flaticon.com/512/2504/2504903.png" 
+                                    alt="Facebook" 
+                                    className="w-full h-full object-cover rounded-full" 
+                                />
+                             </a>
+
+                             {/* Instagram - Black Circle, White Icon */}
+                             <a 
+                               href="https://www.instagram.com/smart_deal_online?igsh=MWxzOTk5bGdobWMycA==" 
+                               target="_blank" 
+                               rel="noopener noreferrer" 
+                               className="w-10 h-10 rounded-full shadow-md flex items-center justify-center hover:scale-110 transition-transform bg-white dark:bg-transparent dark:shadow-none overflow-hidden border-2 border-transparent dark:border-white/20"
+                             >
+                                <img 
+                                    src="https://cdn-icons-png.flaticon.com/512/2504/2504918.png" 
+                                    alt="Instagram" 
+                                    className="w-full h-full object-cover rounded-full" 
+                                />
+                             </a>
+
+                             {/* Gmail - Colorful Icon */}
+                             <a 
+                               href="mailto:albert.studio.1879@gmail.com" 
+                               target="_blank" 
+                               rel="noopener noreferrer" 
+                               className="w-10 h-10 rounded-full shadow-md flex items-center justify-center hover:scale-110 transition-transform bg-white dark:bg-transparent dark:shadow-none overflow-hidden border-2 border-transparent dark:border-white/20"
+                             >
+                                <img 
+                                    src="https://cdn-icons-png.flaticon.com/512/5968/5968534.png" 
+                                    alt="Gmail" 
+                                    className="w-full h-full object-contain p-2" 
+                                />
+                             </a>
+                         </div>
+                    </div>
+                )}
+             </div>
+
+             {/* Sidebar Footer with Admin Trigger */}
+             <div className="p-4 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-800 text-center">
+               <p className="text-[10px] text-gray-400 select-none">
+                 Smart Deal Online v2.<span onClick={onAdminClick} className="cursor-default">0</span>.{new Date().getFullYear().toString().slice(-2)}
+               </p>
+             </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };

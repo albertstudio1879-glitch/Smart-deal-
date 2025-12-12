@@ -1,7 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Category, CATEGORIES, Product } from '../types';
-import { getApiUrl, setApiUrl } from '../services/storageService';
+import { getApiUrl, setApiUrl, getEffectiveApiUrl } from '../services/storageService';
+import { generateSalesPitch } from '../services/geminiService';
+import { Sparkles } from 'lucide-react';
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -10,6 +12,8 @@ interface AdminPanelProps {
   onDeleteProduct?: (id: string) => Promise<void>;
 }
 
+// Script adjusted to remove Video mapping but keep column alignment compatible if needed, 
+// or shifting back. Here we shift back (removing index 10).
 const GOOGLE_SCRIPT_CODE = `function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
 function handleRequest(e) {
@@ -35,8 +39,13 @@ function handleRequest(e) {
           categories: row[5] ? String(row[5]).split(',').map(function(s){return s.trim()}) : [],
           affiliateLink: row[6], highlights: row[7] ? String(row[7]).split('|||') : [],
           description: row[8], code: row[9] || '',
+          // Index 10 was video, skipping/shifting.
+          // Note: If you have existing data with video in col 10, likes might be read incorrectly 
+          // unless we check data types or you clear your sheet. 
+          // Assuming we revert to pre-video structure or handle loose types:
           likes: Number(row[11]) || 0, dislikes: Number(row[12]) || 0,
-          timestamp: Number(row[13]) || 0, id: String(row[13] || Date.now())
+          timestamp: Number(row[13]) || 0, id: String(row[13] || Date.now()),
+          platform: row[14] || ''
         };
       }).filter(function(p) { return p.timestamp; });
       return response(products);
@@ -53,7 +62,8 @@ function handleRequest(e) {
             (p.images || []).join('|||'), p.name, p.mrp, p.price, p.offer,
             (p.categories || []).join(', '), p.affiliateLink,
             (p.highlights || []).join('|||'), p.description, p.code || '',
-            '', p.likes || 0, p.dislikes || 0, p.timestamp
+            '', // Empty placeholder for where video was to keep column structure safe-ish, or just '' 
+            p.likes || 0, p.dislikes || 0, p.timestamp, p.platform || ''
            ];
            if (action !== 'create') deleteRowByTimestamp(sheet, p.timestamp);
            sheet.appendRow(rowData);
@@ -86,7 +96,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
   const [showScriptCode, setShowScriptCode] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'local' | 'cloud'>('local');
-  
+
   // Edit Mode State
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -106,10 +116,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
   const [images, setImages] = useState<string[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-      const url = getApiUrl();
+      const url = getEffectiveApiUrl();
       if (url) {
           setScriptUrl(url);
           setConnectionStatus('cloud');
@@ -140,6 +151,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleGenerateDescription = async () => {
+    if (!formData.name) {
+        alert("Please enter a Product Name first.");
+        return;
+    }
+    setIsGeneratingAI(true);
+    const pitch = await generateSalesPitch(formData.name, selectedCategories[0] || 'General');
+    setFormData(prev => ({ ...prev, description: pitch }));
+    setIsGeneratingAI(false);
   };
 
   const handleSaveSettings = async () => {
@@ -320,7 +342,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
     }
     
     const hugeImages = submissionImages.filter(img => img.length > 500000);
-    // Only warn about size if using Local Storage (no script URL)
+    // Only warn about size if using Local Storage (no scriptUrl)
     if (!scriptUrl && hugeImages.length > 0) {
         if (!confirm(`⚠️ ${hugeImages.length} images are large and might fill up local storage quickly. Proceed? (Recommendation: Use Image URLs)`)) {
             return;
@@ -414,14 +436,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
 
         <div className="inline-block align-middle bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-4xl w-full">
           <div className="bg-gradient-to-r from-brand-600 to-purple-600 px-6 py-4 flex justify-between items-center">
-            <h3 className="text-xl font-bold text-white flex items-center">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
                {editingId ? 'Edit Product' : 'Add New Product'}
             </h3>
             <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setShowSettings(!showSettings)} 
                   className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10 flex items-center gap-1"
-                  title="Database Settings"
+                  title="Database Connection"
                 >
                     <span className={`w-2.5 h-2.5 rounded-full ${connectionStatus === 'cloud' ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]' : 'bg-gray-300'}`}></span>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
@@ -577,7 +599,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Platform</label>
-                        <input name="platform" onChange={handleChange} value={formData.platform} className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2.5 focus:ring-2 focus:ring-brand-500 outline-none" />
+                        <input name="platform" onChange={handleChange} value={formData.platform} placeholder="e.g. Amazon, Myntra" className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2.5 focus:ring-2 focus:ring-brand-500 outline-none" />
                     </div>
                     <div>
                         <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Affiliate Link</label>
@@ -591,7 +613,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Description</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-bold uppercase text-gray-500">Description</label>
+                    <button 
+                        type="button" 
+                        onClick={handleGenerateDescription}
+                        disabled={isGeneratingAI}
+                        className="text-xs flex items-center gap-1 text-brand-600 hover:text-brand-700 font-bold"
+                    >
+                        {isGeneratingAI ? (
+                            <span className="animate-pulse">✨ Writing...</span>
+                        ) : (
+                            <>
+                                <Sparkles className="w-3 h-3" />
+                                <span>Auto-Write with AI</span>
+                            </>
+                        )}
+                    </button>
+                  </div>
                   <textarea required name="description" rows={3} onChange={handleChange} value={formData.description} className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg p-2.5 focus:ring-2 focus:ring-brand-500 outline-none"></textarea>
                 </div>
               </div>
@@ -634,6 +673,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
                   {products.length === 0 && <div className="text-center py-4 text-gray-500 text-sm">No products found.</div>}
                </div>
             </div>
+
           </div>
         </div>
       </div>

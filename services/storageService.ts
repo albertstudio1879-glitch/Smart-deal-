@@ -3,15 +3,33 @@ import { Product } from '../types';
 
 const STORAGE_KEY = 'smart_deal_products';
 const API_URL_KEY = 'smart_deal_api_url';
+const SITE_SETTINGS_KEY = 'smart_deal_site_settings';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzythvKSwTOuAgIpp1SBf1zT5ZKJGcbwPIWUmMmUZ30B0AMfiRJ6wyV1tssa8V2hPzwqQ/exec';
+
+export interface SiteSettings {
+  footerText?: string;
+  advertisingUrl?: string;
+  blogUrl?: string;
+  aboutUrl?: string;
+  supportUrl?: string;
+  youtubeUrl?: string;
+  facebookUrl?: string;
+  whatsappUrl?: string;
+  telegramUrl?: string;
+  instagramUrl?: string;
+  xUrl?: string;
+}
 
 // 1. Priority: User manually entered URL in Admin Panel (LocalStorage)
 // 2. Priority: Vercel Environment Variable (Public Deployment)
-const getEffectiveApiUrl = (): string => {
+// 3. Priority: Hardcoded Default
+export const getEffectiveApiUrl = (): string => {
   const localUrl = localStorage.getItem(API_URL_KEY);
   if (localUrl) return localUrl;
   
   // This comes from Vercel settings
-  return (import.meta as any).env.VITE_GOOGLE_SHEET_URL || '';
+  // Safely access env to avoid "Cannot read properties of undefined"
+  return (import.meta as any)?.env?.VITE_GOOGLE_SHEET_URL || DEFAULT_API_URL;
 };
 
 export const getApiUrl = (): string | null => {
@@ -26,6 +44,20 @@ export const setApiUrl = (url: string) => {
   }
 };
 
+export const getSiteSettings = (): SiteSettings => {
+  try {
+    const stored = localStorage.getItem(SITE_SETTINGS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch (e) {
+    console.error("Failed to load settings", e);
+    return {};
+  }
+};
+
+export const saveSiteSettings = (settings: SiteSettings) => {
+  localStorage.setItem(SITE_SETTINGS_KEY, JSON.stringify(settings));
+};
+
 export const getProducts = async (): Promise<Product[]> => {
   const apiUrl = getEffectiveApiUrl();
   
@@ -35,11 +67,7 @@ export const getProducts = async (): Promise<Product[]> => {
       const response = await fetch(`${apiUrl}?action=read`);
       const data = await response.json();
       if (Array.isArray(data)) {
-        return data.map((p: any) => {
-          // Explicitly strip video field if it exists in raw data to match new type
-          const { video, ...rest } = p;
-          return rest;
-        }).sort((a: any, b: any) => b.timestamp - a.timestamp);
+        return data.sort((a: any, b: any) => b.timestamp - a.timestamp);
       }
       return [];
     } catch (e) {
@@ -71,13 +99,10 @@ export const saveProduct = async (product: Product): Promise<Product[]> => {
       const exists = current.find(p => p.id === product.id);
       const action = exists ? 'update' : 'create';
 
-      // We need to send 'video' as empty string to maintain column order in Google Sheet
-      const productForSheet = { ...product, video: '' };
-
       await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action, product: productForSheet }),
+        body: JSON.stringify({ action, product: product }),
       });
       
       // Wait a moment for sheet to update then re-fetch
@@ -156,13 +181,10 @@ export const updateProductInteraction = async (id: string, updates: { likes?: nu
             if (updates.likes !== undefined) product.likes = updates.likes;
             if (updates.dislikes !== undefined) product.dislikes = updates.dislikes;
             
-            // Send video as empty string for sheet compatibility
-            const productForSheet = { ...product, video: '' };
-
             await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: 'update', product: productForSheet }),
+                body: JSON.stringify({ action: 'update', product: product }),
             });
         }
     } catch (e) {
