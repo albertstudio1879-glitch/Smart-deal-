@@ -9,9 +9,10 @@ interface ProductCardProps {
   onInteraction: (id: string, type: 'like' | 'dislike', currentState: 'none' | 'liked' | 'disliked') => void;
   onBuy: (product: Product) => void;
   lang?: Language;
+  onShare: () => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onInteraction, onBuy, lang = 'en' }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onInteraction, onBuy, lang = 'en', onShare }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [likeState, setLikeState] = useState<'none' | 'liked' | 'disliked'>('none');
 
@@ -47,21 +48,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onIn
     onInteraction(product.id, 'dislike', likeState);
   };
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: product.name,
-          text: `Check out this ${product.name}! Code: ${product.code}`,
-          url: product.affiliateLink,
-        });
-      } catch (error) {
-        console.log('Error sharing', error);
-      }
-    } else {
-      navigator.clipboard.writeText(`${product.name} - ${product.affiliateLink}`);
-      alert('Link copied to clipboard!');
-    }
+  const handleShareClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onShare();
   };
 
   return (
@@ -119,7 +109,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onIn
 
             {/* Share */}
             <button 
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleShare(); }}
+                onClick={handleShareClick}
                 className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-transform active:scale-90"
             >
                 <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">

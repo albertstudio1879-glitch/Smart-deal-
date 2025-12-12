@@ -14,6 +14,7 @@ interface ProductDetailsProps {
   onBuy: () => void;
   onBuyItem?: (product: Product) => void;
   lang?: Language;
+  onShare: (product: Product) => void;
 }
 
 export const ProductDetails: React.FC<ProductDetailsProps> = ({ 
@@ -24,7 +25,8 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
   onInteraction, 
   onBuy, 
   onBuyItem,
-  lang = 'en' 
+  lang = 'en',
+  onShare
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -53,7 +55,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
     const targetCategories = currentRealCategories.length > 0 ? currentRealCategories : product.categories;
 
     // Helper: Tokenize name into significant words
-    // FIX: Allow 2-letter words (TV, LG) and keep structural words like 'set', 'pack'
+    // FIX: Allow 2-letter words (TV, LG) and keep structural words like 'set', 'combo'
     const getTokens = (str: string) => {
         return str.toLowerCase()
             .replace(/[^a-z0-9\s]/g, '') // remove special chars
@@ -113,8 +115,6 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
 
     // 3. Filter and Sort
     // We strictly require either a category match OR a very strong name match (score > 40 implies multiple shared words)
-    // This allows "Kitchen" Dinner Sets to show "Home" Dinner Sets if they share "Dinner" and "Set" (10+10 + maybe 15 boost = 35+), 
-    // but prevents random "Home" items from showing up in "Kitchen" if they don't match names.
     const filteredAndSorted = scoredCandidates
         .filter(item => item.hasCategoryMatch || item.score > 30) 
         .sort((a, b) => b.score - a.score);
@@ -209,23 +209,6 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
     return cleanPrice.startsWith('₹') ? cleanPrice : `₹${cleanPrice}`;
   };
 
-  const handleShare = async () => {
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: product.name,
-            text: `Check out this ${product.name}! Code: ${product.code}`,
-            url: product.affiliateLink,
-          });
-        } catch (error) {
-          console.log('Error sharing', error);
-        }
-      } else {
-        navigator.clipboard.writeText(`${product.name} - ${product.affiliateLink}`);
-        alert('Link copied to clipboard!');
-      }
-    };
-
   return (
     <div ref={containerRef} className="fixed inset-0 z-[60] bg-white dark:bg-slate-900 overflow-y-auto animate-in slide-in-from-bottom-10 duration-200 no-scrollbar transition-colors duration-300">
       
@@ -302,7 +285,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
                 </button>
 
                 <button 
-                  onClick={handleShare} 
+                  onClick={() => onShare(product)} 
                   className="flex items-center gap-1.5 py-1.5 px-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors group"
                 >
                   <svg className="w-6 h-6 text-gray-400 dark:text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -405,6 +388,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({
                                 onInteraction={onInteraction}
                                 onBuy={(prod) => onBuyItem ? onBuyItem(prod) : {}}
                                 lang={lang}
+                                onShare={() => onShare(p)}
                             />
                         </div>
                     ))}

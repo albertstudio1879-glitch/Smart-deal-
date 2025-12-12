@@ -9,6 +9,7 @@ import { BestOfferBanner } from './components/BestOfferBanner';
 import { Footer } from './components/Footer';
 import { InfoPage } from './components/InfoPage';
 import { FilterBar } from './components/FilterBar';
+import { ShareModal } from './components/ShareModal';
 import { Product, Category, Theme } from './types';
 import { getProducts, saveProduct, deleteProduct, updateProductInteraction, getSiteSettings, SiteSettings } from './services/storageService';
 import { Language, getTranslation } from './utils/translations';
@@ -20,6 +21,7 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [sharingProduct, setSharingProduct] = useState<Product | null>(null);
   const [currentLang, setCurrentLang] = useState<Language>('en');
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({});
   
@@ -267,6 +269,7 @@ const App: React.FC = () => {
           onBuy={() => handleBuy(selectedProduct)}
           onBuyItem={handleBuy}
           lang={currentLang}
+          onShare={(p) => setSharingProduct(p)}
         />
       ) : (
         <>
@@ -331,6 +334,7 @@ const App: React.FC = () => {
                       onInteraction={handleInteraction}
                       onBuy={() => handleBuy(product)}
                       lang={currentLang}
+                      onShare={() => setSharingProduct(product)}
                     />
                   ))}
                 </div>
@@ -352,6 +356,7 @@ const App: React.FC = () => {
                           onInteraction={handleInteraction}
                           onBuy={() => handleBuy(product)}
                           lang={currentLang}
+                          onShare={() => setSharingProduct(product)}
                         />
                       ))}
                    </div>
@@ -373,6 +378,14 @@ const App: React.FC = () => {
             onOpenInfoPage={handleOpenInfoPage}
           />
         </>
+      )}
+
+      {/* Sharing Modal */}
+      {sharingProduct && (
+        <ShareModal 
+            product={sharingProduct} 
+            onClose={() => setSharingProduct(null)} 
+        />
       )}
 
       {isAdminOpen && (
