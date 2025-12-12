@@ -265,17 +265,17 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="fixed inset-0 z-[100] flex">
           {/* Backdrop */}
           <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
             onClick={() => setIsSidebarOpen(false)}
           ></div>
 
           {/* Sidebar Content */}
-          <div className="relative w-[85%] max-w-sm bg-white dark:bg-slate-900 h-full shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col transition-colors duration-300">
+          <div className="relative w-[85%] max-w-sm bg-white dark:bg-slate-900 h-full shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col transition-colors duration-300 cursor-default" onClick={(e) => e.stopPropagation()}>
              
              {/* Header */}
              <div 
                className="border-b border-white/10 p-4 flex items-center justify-between sticky top-0 z-10"
-               style={{ backgroundColor: '#C2185B' }} // Updated to pink/crimson as requested
+               style={{ backgroundColor: '#C2185B' }}
              >
                 <div className="flex items-center gap-3">
                    <div className="flex flex-col text-white justify-center">

@@ -63,6 +63,18 @@ const App: React.FC = () => {
     }
   }, [theme]);
 
+  // Body Scroll Lock Effect
+  useEffect(() => {
+    if (selectedProductId || activeInfoPage) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedProductId, activeInfoPage]);
+
   const loadData = async () => {
     setIsLoading(true);
     const data = await getProducts();
@@ -267,13 +279,121 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 font-sans transition-colors duration-300">
       
-      {activeInfoPage ? (
-          <InfoPage 
-            title={activeInfoPage.title}
-            content={activeInfoPage.content}
-            onBack={handleInfoPageBack}
-          />
-      ) : selectedProduct ? (
+      {/* 
+         Structure Change:
+         Render Header, Main, Footer ALWAYS to preserve scroll position.
+         Render Overlays (ProductDetails, InfoPage) on top based on state.
+      */}
+
+      <Header 
+        activeCategory={activeCategory} 
+        onCategoryChange={(cat) => {
+          setActiveCategory(cat);
+          setSearchQuery('');
+          // Reset filters when changing categories
+          setActivePriceRange(null);
+          setActiveMinOffer(null);
+          setSortBy('default');
+          window.scrollTo({ top: 0, behavior: 'smooth' }); // Explicitly scroll to top on category change
+        }}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        products={products}
+        currentLang={currentLang}
+        onLanguageChange={setCurrentLang}
+        siteSettings={siteSettings}
+        onAdminClick={() => setIsAdminOpen(true)}
+        currentTheme={theme}
+        onThemeChange={setTheme}
+        onOpenInfoPage={handleOpenInfoPage}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+      />
+
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
+        
+        {/* Show Trending Banner only on Home (All) tab and when not searching */}
+        {activeCategory === 'All' && !searchQuery && !activePriceRange && !activeMinOffer && sortBy === 'default' && (
+          <TrendingBanner products={products} onProductClick={setSelectedProductId} />
+        )}
+
+        <div className="flex items-center justify-between mb-2 px-2">
+          {getCategoryTitle() && (
+            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+                {getCategoryTitle()}
+            </h2>
+          )}
+        </div>
+        
+        {/* Comprehensive Filter Bar */}
+        <FilterBar 
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          activePriceRange={activePriceRange}
+          onPriceRangeChange={setActivePriceRange}
+          activeMinOffer={activeMinOffer}
+          onMinOfferChange={setActiveMinOffer}
+          resultCount={filteredProducts.length}
+        />
+
+        {filteredProducts.length > 0 ? (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 mt-2">
+              {productsBeforeBanner.map(product => (
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  onClick={() => setSelectedProductId(product.id)}
+                  onInteraction={handleInteraction}
+                  onBuy={() => handleBuy(product)}
+                  lang={currentLang}
+                  onShare={() => setSharingProduct(product)}
+                />
+              ))}
+            </div>
+
+            {/* Interstitial Best Offer Banner */}
+            {showBestOffersBanner && (
+               <div className="mt-6">
+                  <BestOfferBanner products={products} onProductClick={setSelectedProductId} />
+               </div>
+            )}
+
+            {productsAfterBanner.length > 0 && (
+               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 mt-2 sm:mt-4">
+                  {productsAfterBanner.map(product => (
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      onClick={() => setSelectedProductId(product.id)}
+                      onInteraction={handleInteraction}
+                      onBuy={() => handleBuy(product)}
+                      lang={currentLang}
+                      onShare={() => setSharingProduct(product)}
+                    />
+                  ))}
+               </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-20">
+            <div className="text-6xl mb-4">🔍</div>
+            <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100">{t('noProducts')}</h3>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">{t('tryAdjusting')}</p>
+          </div>
+        )}
+      </main>
+
+      <Footer 
+        settings={siteSettings} 
+        onAdminClick={() => setIsAdminOpen(true)} 
+        lang={currentLang} 
+        onOpenInfoPage={handleOpenInfoPage}
+      />
+
+      {/* Overlays */}
+      
+      {selectedProduct && (
         <ProductDetails 
           product={selectedProduct} 
           allProducts={products}
@@ -289,113 +409,14 @@ const App: React.FC = () => {
           lang={currentLang}
           onShare={(p) => setSharingProduct(p)}
         />
-      ) : (
-        <>
-          <Header 
-            activeCategory={activeCategory} 
-            onCategoryChange={(cat) => {
-              setActiveCategory(cat);
-              setSearchQuery('');
-              // Reset filters when changing categories
-              setActivePriceRange(null);
-              setActiveMinOffer(null);
-              setSortBy('default');
-            }}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            products={products}
-            currentLang={currentLang}
-            onLanguageChange={setCurrentLang}
-            siteSettings={siteSettings}
-            onAdminClick={() => setIsAdminOpen(true)}
-            currentTheme={theme}
-            onThemeChange={setTheme}
-            onOpenInfoPage={handleOpenInfoPage}
-            isSidebarOpen={isSidebarOpen}
-            setIsSidebarOpen={setIsSidebarOpen}
+      )}
+
+      {activeInfoPage && (
+          <InfoPage 
+            title={activeInfoPage.title}
+            content={activeInfoPage.content}
+            onBack={handleInfoPageBack}
           />
-
-          <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
-            
-            {/* Show Trending Banner only on Home (All) tab and when not searching */}
-            {activeCategory === 'All' && !searchQuery && !activePriceRange && !activeMinOffer && sortBy === 'default' && (
-              <TrendingBanner products={products} onProductClick={setSelectedProductId} />
-            )}
-
-            <div className="flex items-center justify-between mb-2 px-2">
-              {getCategoryTitle() && (
-                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">
-                    {getCategoryTitle()}
-                </h2>
-              )}
-            </div>
-            
-            {/* Comprehensive Filter Bar */}
-            <FilterBar 
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              activePriceRange={activePriceRange}
-              onPriceRangeChange={setActivePriceRange}
-              activeMinOffer={activeMinOffer}
-              onMinOfferChange={setActiveMinOffer}
-              resultCount={filteredProducts.length}
-            />
-
-            {filteredProducts.length > 0 ? (
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 mt-2">
-                  {productsBeforeBanner.map(product => (
-                    <ProductCard 
-                      key={product.id} 
-                      product={product} 
-                      onClick={() => setSelectedProductId(product.id)}
-                      onInteraction={handleInteraction}
-                      onBuy={() => handleBuy(product)}
-                      lang={currentLang}
-                      onShare={() => setSharingProduct(product)}
-                    />
-                  ))}
-                </div>
-
-                {/* Interstitial Best Offer Banner */}
-                {showBestOffersBanner && (
-                   <div className="mt-6">
-                      <BestOfferBanner products={products} onProductClick={setSelectedProductId} />
-                   </div>
-                )}
-
-                {productsAfterBanner.length > 0 && (
-                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 mt-2 sm:mt-4">
-                      {productsAfterBanner.map(product => (
-                        <ProductCard 
-                          key={product.id} 
-                          product={product} 
-                          onClick={() => setSelectedProductId(product.id)}
-                          onInteraction={handleInteraction}
-                          onBuy={() => handleBuy(product)}
-                          lang={currentLang}
-                          onShare={() => setSharingProduct(product)}
-                        />
-                      ))}
-                   </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-20">
-                <div className="text-6xl mb-4">🔍</div>
-                <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100">{t('noProducts')}</h3>
-                <p className="text-gray-500 dark:text-gray-400 mt-2">{t('tryAdjusting')}</p>
-              </div>
-            )}
-          </main>
-
-          <Footer 
-            settings={siteSettings} 
-            onAdminClick={() => setIsAdminOpen(true)} 
-            lang={currentLang} 
-            onOpenInfoPage={handleOpenInfoPage}
-          />
-        </>
       )}
 
       {/* Sharing Modal */}

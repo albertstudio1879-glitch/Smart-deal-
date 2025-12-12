@@ -1,7 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { Product } from '../types';
-import { X, Copy, MessageCircle, Facebook, Globe, Link, Download, Share2 } from 'lucide-react';
+import { X, Copy, MessageCircle, Facebook, Globe, Link, Download, Share2, Check } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { toPng } from 'html-to-image';
 
@@ -13,6 +13,7 @@ interface ShareModalProps {
 export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const websiteUrl = 'https://smart-deal-ebon.vercel.app/';
   const affiliateLink = product.affiliateLink;
@@ -62,10 +63,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
       }
   };
 
-  const handleCopyLink = () => {
-    // Copy the deep link (to the website), not the affiliate link
-    navigator.clipboard.writeText(`${shareText}\nLink: ${deepLink}`);
-    alert("Website link copied to clipboard!");
+  const handleCopyCode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(product.code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
   };
 
   const shareToWhatsapp = () => {
@@ -80,7 +82,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+    <div 
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto cursor-pointer"
+        onClick={onClose}
+    >
       
       {/* Print Styles: Hidden but kept structure if browser print is forced manually */}
       <style>{`
@@ -112,7 +117,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
         }
       `}</style>
 
-      <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+      <div 
+        className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header / Close */}
         <div id="close-button" className="flex justify-between items-center p-3 border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 z-10">
@@ -153,9 +161,18 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
                 {/* Product Info */}
                 <div className="mb-2">
                     <h1 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 mb-1">{product.name}</h1>
-                    <div className="inline-block bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded font-mono border border-gray-200">
-                        Code: {product.code}
-                    </div>
+                    
+                    {/* Copy Code Button */}
+                    <button 
+                        onClick={handleCopyCode}
+                        className="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] px-2.5 py-1 rounded-lg font-mono border border-gray-200 transition-all active:scale-95 mx-auto"
+                        title="Click to copy code"
+                    >
+                        <span className={copiedCode ? "text-green-600 font-bold" : ""}>
+                            {copiedCode ? "Code Copied!" : `Code: ${product.code}`}
+                        </span>
+                        {copiedCode ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                    </button>
                 </div>
 
                 {/* Price Row */}
