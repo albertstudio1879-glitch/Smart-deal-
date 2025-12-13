@@ -15,7 +15,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ product, onClose }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  const websiteUrl = 'https://smart-deal-ebon.vercel.app/';
+  const websiteUrl = 'https://smartdeal-online-com.vercel.app/';
   const affiliateLink = product.affiliateLink;
   
   // Deep link pointing to the website with product code parameter

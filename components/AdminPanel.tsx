@@ -416,7 +416,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
              </div>
              <h2 className="text-2xl font-bold text-gray-900 mb-2">Admin Access</h2>
              <form onSubmit={handleLogin} className="space-y-4">
-               <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 outline-none" placeholder="Enter password..." autoFocus />
+               <input 
+                  type="password" 
+                  value={passwordInput} 
+                  onChange={(e) => setPasswordInput(e.target.value)} 
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 outline-none text-gray-900 bg-white" 
+                  placeholder="Enter password..." 
+                  autoFocus 
+               />
                <button type="submit" className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg">Unlock Panel</button>
              </form>
              <button onClick={onClose} className="mt-4 text-gray-400 text-sm">Cancel</button>
@@ -473,7 +480,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
                         </div>
                         <textarea 
                             readOnly 
-                            className="w-full h-48 text-[10px] font-mono p-2 border border-gray-200 rounded focus:outline-none"
+                            className="w-full h-48 text-[10px] font-mono p-2 border border-gray-200 rounded focus:outline-none text-gray-900 bg-white"
                             value={GOOGLE_SCRIPT_CODE}
                             onClick={(e) => (e.target as HTMLTextAreaElement).select()}
                         />
@@ -497,7 +504,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
                       value={scriptUrl} 
                       onChange={(e) => setScriptUrl(e.target.value)} 
                       placeholder="Paste Web App URL here (starts with https://script.google.com/...)" 
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none" 
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-gray-900 bg-white" 
                     />
                     <button 
                         onClick={handleSaveSettings} 
@@ -535,7 +542,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onAddProduct, p
                         onChange={(e) => setImageUrlInput(e.target.value)}
                         onKeyDown={handleUrlInputKeyDown}
                         placeholder="Paste Image URL here..."
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white"
                       />
                       <button type="button" onClick={handleAddImageUrl} className="bg-gray-800 text-white px-3 rounded-lg text-sm hover:bg-gray-900 transition-colors">Add</button>
                   </div>
