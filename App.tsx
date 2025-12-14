@@ -188,7 +188,7 @@ const App: React.FC = () => {
         const taggedTrending = filtered.filter(p => p.categories && p.categories.includes('Trending'));
         filtered = taggedTrending.length > 0 ? taggedTrending : filtered.slice(0, 10);
       } else if (activeCategory === 'Recently Uploaded') {
-        filtered = [...filtered].sort((a, b) => b.timestamp - a.timestamp);
+        filtered = filtered.sort((a, b) => b.timestamp - a.timestamp);
       } else {
         filtered = filtered.filter(p => {
           const cats = p.categories || [];
